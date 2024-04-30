@@ -14,6 +14,9 @@ from typing import List
 import subprocess
 
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
 # Custom CSS to inject for making buttons bigger
 css = """
 <style>

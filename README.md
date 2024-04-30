@@ -1,6 +1,6 @@
 # AI therapist
 
-AI therapist that listens to your problems and offers advice when asked.
+AI therapist that listens and offers advice when asked.
 
 I'm using:
 - OpenAI's Whisper for speech-to-text

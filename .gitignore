@@ -1,2 +1,6 @@
 venv
 .history
+testing/__pycache__
+__pycache__
+outputs
+temp_audio.wav

@@ -2,39 +2,70 @@
 
 
 import boto3
-import os
 from pathlib import Path
 import torch
 from scipy.io.wavfile import write
-from gtts import gTTS
 import whisper
+from gtts import gTTS
+import io
+import soundfile as sf
 
 
+outputs = Path('outputs')
+outputs.mkdir(parents=True, exist_ok=True)
+
+
+class Whisper():
+    """
+    Speech to text conversion using OpenAI's Whisper model.
+    """
+    def generate(self, voice_path):
+        # model = whisper.load_model("large")
+        model = whisper.load_model("base")
+        result = model.transcribe(voice_path)
+        return result["text"]
 
 
 class Polly():
+    """AWS Polly class for text-to-speech conversion."""
     def __init__(self):
         # Create a Polly client
         self.client = boto3.client('polly')
-        self.response = []
+        self.text_response = []
+        self.voice_files = []
+        self.counter = 0
+        self.player = None
         
-    def generate(self, text):
+        
+    def generate(self, text, file_output=None):
         # Member must satisfy enum value set: [Lotte, Maxim, Ayanda, Salli, Ola, Arthur, Ida, Tomoko, Remi, Geraint, Miguel, Elin, Lisa, Giorgio, Marlene, Ines, Kajal, Zhiyu, Zeina, Suvi, Karl, Gwyneth, Joanna, Lucia, Cristiano, Astrid, Andres, 
         # Vicki, Mia, Vitoria, Bianca, Chantal, Raveena, Daniel, Amy, Liam, Ruth, Kevin, Brian, Russell, Aria, Matthew, Aditi, Zayd, Dora, Enrique, Hans, Danielle, Hiujin, Carmen, Sofie, Gregory, 
         # Ivy, Ewa, Maja, Gabrielle, Nicole, Filiz, Camila, Jacek, Thiago, Justin, Celine, Kazuha, Kendra, Arlet, Ricardo, Mads, Hannah, Mathieu, Lea, Sergio, Hala, Tatyana, Penelope, Naja, Olivia, 
         # Ruben, Laura, Takumi, Mizuki, Carla, Conchita, Jan, Kimberly, Liv, Adriano, Lupe, Joey, Pedro, Seoyeon, Emma, Niamh, Stephen]
 
-        self.response.append(self.client.synthesize_speech(
-            VoiceId='Joanna',
-            OutputFormat='mp3', 
-            Text = text))
+        self.text_response.append(text)
+
+        if not file_output:
+            file_output = outputs / f"{self.counter:04d}_polly.mp3"
         
-        with open(outputs/'polly.mp3', 'wb') as f:
-            f.write(self.response[-1]['AudioStream'].read())
-        
-        
+        with open(file_output, 'wb') as f:
+            f.write(
+                self.client.synthesize_speech(
+                    VoiceId='Joanna',
+                    OutputFormat='mp3', 
+                    Text = text)['AudioStream'].read()
+                )
+            self.voice_files.append(file_output)
+            
+            self.counter += 1
+            
+            self.last_filename = file_output
+            
 
 class Tacotron():
+    """
+    Text to speech conversion using Tacotron2 and WaveGlow models. Works only on GPU.
+    """
     
     def __init__(self):
         
@@ -82,38 +113,18 @@ class Tacotron():
 
 class GoogleTTS():
     def generate(self, text):
+        
         tts = gTTS(text=text, lang='en')
         tts.save(outputs/"google.mp3")
         
+
+# Assuming `audio_bytes` is your audio file in bytes
+def write_to_temp_audio(audio_bytes, output_path='temp_audio.wav'):
+    # Convert bytes to a WAV file format in a buffer
+    with io.BytesIO(audio_bytes) as audio_buffer:
+        # Read the audio buffer with soundfile
+        data, samplerate = sf.read(audio_buffer)
         
-class Whisper():
-    def generate(self, voice_path):
-        # model = whisper.load_model("large")
-        model = whisper.load_model("base")
-        result = model.transcribe(voice_path)
-        return result["text"]
-
-
-if __name__ == "__main__":
-
-    text = "Hello, great to see you again here, and good luck!"
-    outputs = Path('outputs')
-    outputs.mkdir(parents=True, exist_ok=True)
-        
-
-    # polly = Polly()
-    # polly.generate(text)
-    
-    # tacotron = Tacotron()
-    # tacotron.generate(text)
-    
-    # GoogleTTS().generate(text)
-    
-    whisper = Whisper()
-    print(whisper.generate(outputs/"google.mp3"))
-    
-    
-
-    # os.system("afplay audio.wav")  # For MacOS
-    # os.system("mpg321 audio.wav")  # For Linux
-    # Audio(audio_numpy, rate=rate)  # Play it directly in a Jupyter Notebook
+        # Save to a temporary WAV file
+        temp_file_path = output_path
+        sf.write(temp_file_path, data, samplerate)

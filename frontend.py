@@ -1,141 +1,158 @@
 
 """
-DO NOT RENAME OR MOVE THIS FILE. 
-Must update GitHub action workflow and documentation in README if you do.
-
-The key variable below st.session_state['chat'], or simply chat, which is list of dictionaries with keys 'role' and 'content'. 
-First item is system role, then 2N pairs of question and answers.
+The key variable below st.session_state['chat'], which is list of dictionaries with keys 'role' and 'content'. 
+First item is system role, then 2N pairs of questions and answers.
 """
 
 import streamlit as st
-import requests
-import json
+import os
+from openai import OpenAI
+from utils import Polly, Whisper, Player
+from utils import write_to_temp_audio
+from audio_recorder_streamlit import audio_recorder
+from typing import List
+import subprocess
 
-TEXT_INPUT_KEY = "user_input"
-MAX_TRIALS = 3
-options_for_assistant = ['Helpful Assistant']
+
+# Custom CSS to inject for making buttons bigger
+css = """
+<style>
+.stButton>button {
+    background-image: url('http://www.clker.com/cliparts/5/A/k/D/X/A/stop-button-md.png');
+    width: 150px !important;
+    height: 150px !important;
+    background-size: cover; /* Cover the entire area of the button */
+    border: none;
+}
+</style>
+"""
+
+# Inject custom CSS with markdown
+st.markdown(css, unsafe_allow_html=True)
+
+
+ss = st.session_state 
 
 
 # Function to send requests to your GPT model
-def send_message():
+def send_message(llm_client: OpenAI, question: str, old_chat: List[dict]):
     """
-    Tries to send a chat to lambda f-on (where question is added to a chat first). 
-    If error occurs, reverts back to the old chat history and leave the question in the text input.
+    Calls OpenAI API, if error occurs, reverts back to the old chat history and leave the question in the text input.
     """
-    question = st.session_state[TEXT_INPUT_KEY]
-    old_chat = st.session_state['chat']
-    
     try:
-        lambda_url = "https://5faukxw75uazcs2zdl4zbvyg2e0lebie.lambda-url.us-west-1.on.aws/"
-        headers = {'Content-Type': 'application/json'}
-        possible_new_chat = old_chat.copy()
-        possible_new_chat.append({'role': 'user', 'content': question})
-        # # for testing only, throwing an error on the second trial
-        # if st.session_state['number_of_trials'] == MAX_TRIALS - 1:
-        #     raise Exception("This is a test error")
-        
-        r = requests.post(headers=headers, url=lambda_url, json=json.dumps(possible_new_chat))
-        new_chat = json.loads(r.content.decode('utf-8'))
-            
-        # catches some weird error in case last response was not from the assistant or system
-        if new_chat[-1]['role'] in ['assistant', 'system']:
-            st.session_state['number_of_trials'] -= 1
-            st.session_state['error'] = None
-        else:
-            raise Exception("The last message was not from the assistant or system.")
-        
         # stores new chat, removes the old input
-        st.session_state['chat'] = new_chat
-        st.session_state[TEXT_INPUT_KEY] = ''
-        st.session_state['question_choice'] = None 
+        new_chat = old_chat.copy()
+        new_chat.append({'role': 'user', 'content': question})
+        
+        reply = llm_client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages=new_chat,
+            max_tokens=500
+            )
+
+        answer = reply.choices[0].message.content
+        new_chat.append({'role': 'assistant', 'content': answer})
+        
+        user_input = ''
+        error = None
         
     except Exception as e:
-        st.session_state['error'] = e
         # will have to show the same chat old again and will leave old input as is
-        st.session_state['chat'] = old_chat
+        new_chat = old_chat
+        user_input = question
+        error = e
+        
+    return new_chat, user_input, error
 
 
-def show_previous_q_and_a():
-    """
-    Show all previous Q&A
-    """
-    # filter out all system roles
+def stop_audio():
+    ss['player'].terminate()
+    ss['stopped'] = True
     
-    temp_chat = st.session_state['chat'].copy()
-    temp_chat = [x for x in temp_chat if x['role'] in ['user', 'assistant']]
+
+if __name__ == "__main__":
+
+    st.title("Ella App v0.1")
+
+    st.info(f"""
+            Welcome to Ella App, an AI therapist. Works only in Chrome.
+    """)
+
+    if 'first time' not in st.session_state:
+        ss['input_text'] = ''
+        ss['error'] = None
+        ss['chat'] = []
+        ss['first time'] = False
+        
+        ss['whisper'] = Whisper()
+        ss['polly'] = Polly()
+        ss['player'] = Player()
+        
+        ss['stopped'] = False
+
+        ss['user_input'] = None
+        ss['llm_client'] = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))   
+
+        # assign role:
+        ss['chat'].append({'role': 'system', 'content': """You are AI therapist who primarily
+                           responds with brief, question-driven dialogue, encouraging users to   
+                           explore their feelings and thoughts. You provide brief suggestions
+                           and ask probing questions to facilitate self-reflection,
+                           only elaborating in detail when explicitly requested by the user.
+                           This approach helps maintain an engaging and reflective conversation,
+                           guiding users towards self-discovery and emotional awareness."""})
+        
+        # ss['chat'].append({'role': 'system', 'content': """You are expert machine learning engineer
+        #                   give me only very short answers and directly in Python or Bash code depending on the context. I will ask you if I need more details."""})
+        
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        ss['audio_bytes'] = audio_recorder(text='', icon_size='10x', pause_threshold=30)
+
+    with col2:
+        st.button(" ", key='stop', on_click=stop_audio)
+
+    # crux of the code, get user input and send it to OpenAI
+    if ss['audio_bytes'] and not ss['stopped']:
+        # this will save the audio to a file temp_audio.wav
+        write_to_temp_audio(ss['audio_bytes'], 'temp_audio.wav')
+        
+        # this optionally shows the audio bar
+        # st.audio(ss['audio_bytes'], format="audio/wav")
+        
+        # this will convert the audio to text
+        user_input_txt = ss['whisper'].generate('temp_audio.wav')
+        
+        # this will send the text to OpenAI
+        ss['user_input'] = user_input_txt
+        ss['chat'], ss['user_input'], ss['error'] = send_message(ss['llm_client'], ss['user_input'], ss['chat'])
+        
+        # this will write the answer to a mp3 file
+        ss['polly'].generate(ss['chat'][-1]['content'])
+        
+        # this will start playing the mp3 file
+        ss['player'] = subprocess.Popen(["afplay", ss['polly'].last_filename])
     
-    for i in range(0, len(temp_chat), 2):
-        question = temp_chat[i]['content']
-        answer = temp_chat[i+1]['content']
+    
+    ### Show all previous Q&A
+    for i in range(1, len(ss['chat']), 2):
+        question = ss['chat'][i]['content']
+        answer = ss['chat'][i+1]['content']
         
         st.write(question)
         st.markdown(f'<div style="color: gray;">{answer}</div>', unsafe_allow_html=True) 
         st.text("\n" * 10)
-        
-        
-def show_input_prompt_and_send_button():
-    """
-    Show a new input prompt and a send button.
-    """
-
-    if st.session_state['number_of_trials'] > 0:
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.text_input(
-                label="user input",
-                key=TEXT_INPUT_KEY, 
-                placeholder="Ask a question", 
-                label_visibility="collapsed"
-                )
-        with col2:
-            st.button("Send", on_click=send_message)
-            
-        col1, col2, col3 = st.columns([2, 2, 1]) 
-        with col1:
-            assistant_choice = st.radio("Optional assistant focus:", options_for_assistant, on_change=assign_role, key="assistant_choice")
-        
-        with col2:
-            options_for_question = ['Write "Hello World" in Python', 'Write depth first search algorithm in Python', 'Why did the chicken cross the road?', ]
-            st.radio("Examples ...", options_for_question, on_change=assign_question, key="question_choice", index=None)
-            
-    else:
-        st.info(f"This demo allows only {MAX_TRIALS} API calls. Thanks for trying it out. No chats are stored.")
-
-
-def assign_role(value=None):
-    if value is None:
-        value = st.session_state['assistant_choice']
-    st.session_state['chat'].append({'role': 'system', 'content': f"You are now a {value}."})
-
-
-def assign_question():
-    st.session_state[TEXT_INPUT_KEY] = st.session_state['question_choice']
-
-
-if __name__ == "__main__":
-
-    st.title("MyGPT Demo v1.1")
-
-    st.info(f"""
-            Welcome to MyGPT, a simple demo of OpenAI ChatGPT-4 based chatbot. Please note:
-            - no chats are stored,
-            - responses are limited to about 500 words and {MAX_TRIALS} API calls per session,  
-            - please allow up to 10 seconds for response. 
-    """)
-
-    if 'first time' not in st.session_state:
-        st.session_state['number_of_trials'] = MAX_TRIALS
-        st.session_state['input_text'] = ''
-        st.session_state['error'] = None
-        st.session_state['chat'] = []
-        assign_role('Helpful Assistant')
-        st.session_state['first time'] = False
-        
-    # "debug", st.session_state['chat']
-    # "error", st.session_state['error']
-
-    show_previous_q_and_a()  
-    show_input_prompt_and_send_button()
     
-    if st.session_state['error'] is not None:
-        st.error(f"API issue encountered on OpenAI side, try again ...")  
+    ss['stopped'] = False
+    
+    # if ss['error'] is not None:
+    #     st.error(f"API issue encountered on OpenAI side, try again ...")  
+        
+        
+    ## DEBUGGING
+    
+    # "debug", ss['chat']
+    # "error", ss['error']
+

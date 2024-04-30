@@ -7,7 +7,7 @@ First item is system role, then 2N pairs of questions and answers.
 import streamlit as st
 import os
 from openai import OpenAI
-from utils import Polly, Whisper, Player
+from utils import Polly, Whisper
 from utils import write_to_temp_audio
 from audio_recorder_streamlit import audio_recorder
 from typing import List
@@ -86,7 +86,6 @@ if __name__ == "__main__":
         
         ss['whisper'] = Whisper()
         ss['polly'] = Polly()
-        ss['player'] = Player()
         
         ss['stopped'] = False
 
@@ -155,4 +154,5 @@ if __name__ == "__main__":
     
     # "debug", ss['chat']
     # "error", ss['error']
+
 

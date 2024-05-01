@@ -30,7 +30,7 @@ class Polly():
     """AWS Polly class for text-to-speech conversion."""
     def __init__(self):
         # Create a Polly client
-        self.client = boto3.client('polly')
+        self.client = boto3.client('polly', region_name='us-west-1')
         self.text_response = []
         self.voice_files = []
         self.counter = 0

@@ -6,6 +6,7 @@ First item is system role, then 2N pairs of questions and answers.
 
 import streamlit as st
 import os
+import sys
 from openai import OpenAI
 from utils import Polly, Whisper
 from utils import write_to_temp_audio
@@ -75,7 +76,7 @@ def stop_audio():
 
 if __name__ == "__main__":
 
-    st.title("Ella App v0.1")
+    st.title("Ella App v0.5")
 
     st.info(f"""
             Welcome to Ella App, an AI therapist. Works only in Chrome.
@@ -118,14 +119,15 @@ if __name__ == "__main__":
 
     # crux of the code, get user input and send it to OpenAI
     if ss['audio_bytes'] and not ss['stopped']:
-        # this will save the audio to a file temp_audio.wav
-        write_to_temp_audio(ss['audio_bytes'], 'temp_audio.wav')
+        temp_input_name = 'temp_input.wav'
+        # this will save the audio to a file
+        write_to_temp_audio(ss['audio_bytes'], temp_input_name)
         
         # this optionally shows the audio bar
         # st.audio(ss['audio_bytes'], format="audio/wav")
         
         # this will convert the audio to text
-        user_input_txt = ss['whisper'].generate('temp_audio.wav')
+        user_input_txt = ss['whisper'].generate(temp_input_name)
         
         # this will send the text to OpenAI
         ss['user_input'] = user_input_txt
@@ -135,9 +137,12 @@ if __name__ == "__main__":
         ss['polly'].generate(ss['chat'][-1]['content'])
         
         # this will start playing the mp3 file
-        ss['player'] = subprocess.Popen(["afplay", ss['polly'].last_filename])
-    
-    
+        if sys.platform.startswith('darwin'):
+            
+            ss['player'] = subprocess.Popen(["afplay", ss['polly'].last_filename])
+        elif sys.platform.startswith('linux'):
+            ss['player'] = subprocess.Popen(["mpg321", ss['polly'].last_filename])
+            
     ### Show all previous Q&A
     for i in range(1, len(ss['chat']), 2):
         question = ss['chat'][i]['content']

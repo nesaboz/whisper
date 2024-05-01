@@ -11,10 +11,6 @@ import io
 import soundfile as sf
 
 
-outputs = Path('outputs')
-outputs.mkdir(parents=True, exist_ok=True)
-
-
 class Whisper():
     """
     Speech to text conversion using OpenAI's Whisper model.
@@ -33,7 +29,6 @@ class Polly():
         self.client = boto3.client('polly', region_name='us-west-1')
         self.text_response = []
         self.voice_files = []
-        self.counter = 0
         self.player = None
         
         
@@ -46,19 +41,16 @@ class Polly():
         self.text_response.append(text)
 
         if not file_output:
-            file_output = outputs / f"{self.counter:04d}_polly.mp3"
+            file_output = f"temp_output.wav"
         
         with open(file_output, 'wb') as f:
             f.write(
                 self.client.synthesize_speech(
                     VoiceId='Joanna',
-                    OutputFormat='mp3', 
+                    OutputFormat='wav', 
                     Text = text)['AudioStream'].read()
                 )
             self.voice_files.append(file_output)
-            
-            self.counter += 1
-            
             self.last_filename = file_output
             
 
@@ -108,18 +100,18 @@ class Tacotron():
         rate = 22050
 
         # Write to a file
-        write(outputs/"tacotron.wav", rate, audio_numpy)
+        write("tacotron.wav", rate, audio_numpy)
 
 
 class GoogleTTS():
     def generate(self, text):
         
         tts = gTTS(text=text, lang='en')
-        tts.save(outputs/"google.mp3")
+        tts.save("google.mp3")
         
 
 # Assuming `audio_bytes` is your audio file in bytes
-def write_to_temp_audio(audio_bytes, output_path='temp_audio.wav'):
+def write_to_temp_audio(audio_bytes, output_path='temp_input.wav'):
     # Convert bytes to a WAV file format in a buffer
     with io.BytesIO(audio_bytes) as audio_buffer:
         # Read the audio buffer with soundfile

@@ -13,7 +13,9 @@
                  "run",
                  "${file}",
                  "--server.port",
-                 "8501"
+                 "8501",
+                 "--server.headless",
+                 "true"
             ]
         }
     ]

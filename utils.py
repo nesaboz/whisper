@@ -2,11 +2,7 @@
 
 
 import boto3
-from pathlib import Path
-import torch
-from scipy.io.wavfile import write
 import whisper
-from gtts import gTTS
 import io
 import soundfile as sf
 
@@ -28,7 +24,6 @@ class Polly():
         # Create a Polly client
         self.client = boto3.client('polly', region_name='us-west-1')
         self.text_response = []
-        self.voice_files = []
         self.player = None
         
         
@@ -40,75 +35,22 @@ class Polly():
 
         self.text_response.append(text)
 
-        if not file_output:
-            file_output = f"temp_output.wav"
-        
-        with open(file_output, 'wb') as f:
-            f.write(
-                self.client.synthesize_speech(
-                    VoiceId='Joanna',
-                    OutputFormat='wav', 
-                    Text = text)['AudioStream'].read()
-                )
-            self.voice_files.append(file_output)
-            self.last_filename = file_output
-            
+        if file_output:
+            file_output = f"temp_output.mp3"
+            with open(file_output, 'wb') as f:
+                f.write(
+                    self.client.synthesize_speech(
+                        VoiceId='Joanna',
+                        OutputFormat='mp3', 
+                        Text = text)['AudioStream'].read()
+                    )
+                self.last_filename = file_output
+        else:
+            return self.client.synthesize_speech(
+                        VoiceId='Joanna',
+                        OutputFormat='mp3', 
+                        Text = text)['AudioStream'].read()
 
-class Tacotron():
-    """
-    Text to speech conversion using Tacotron2 and WaveGlow models. Works only on GPU.
-    """
-    
-    def __init__(self):
-        
-        # from IPython.display import Audio
-
-        # Install necessary Python libraries (This should be done in your system shell or use !pip in a Jupyter notebook)
-        # !pip install numpy scipy librosa unidecode inflect
-
-        # Assume system dependencies like libsndfile1 are already installed
-
-        device = 'cuda'
-        # Load pre-trained Tacotron2 model
-
-        tacotron2 = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_tacotron2', model_math='fp16')
-        tacotron2 = tacotron2.to(device)
-        tacotron2.eval()
-        
-        self.tacotron2 = tacotron2
-
-        # Load pre-trained WaveGlow model
-        waveglow = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_waveglow', model_math='fp16')
-        waveglow = waveglow.remove_weightnorm(waveglow)
-        waveglow = waveglow.to(device)
-        waveglow.eval()
-        
-        self.waveglow = waveglow
-        
-        self.utils = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_tts_utils')
-        
-
-    def generate(self, text):
-        
-        sequences, lengths = self.utils.prepare_input_sequence([text])
-
-        # Generate speech
-        with torch.no_grad():
-            mel, _, _ = self.tacotron2.infer(sequences, lengths)
-            audio = self.waveglow.infer(mel)
-        audio_numpy = audio[0].data.cpu().numpy()
-        rate = 22050
-
-        # Write to a file
-        write("tacotron.wav", rate, audio_numpy)
-
-
-class GoogleTTS():
-    def generate(self, text):
-        
-        tts = gTTS(text=text, lang='en')
-        tts.save("google.mp3")
-        
 
 # Assuming `audio_bytes` is your audio file in bytes
 def write_to_temp_audio(audio_bytes, output_path='temp_input.wav'):
@@ -120,3 +62,68 @@ def write_to_temp_audio(audio_bytes, output_path='temp_input.wav'):
         # Save to a temporary WAV file
         temp_file_path = output_path
         sf.write(temp_file_path, data, samplerate)
+
+
+
+
+
+# class Tacotron():
+#     """
+#     Text to speech conversion using Tacotron2 and WaveGlow models. Works only on GPU.
+#     Needs:
+#     import torch
+#     from scipy.io.wavfile import write
+    
+#     """
+    
+#     def __init__(self):
+        
+#         # from IPython.display import Audio
+
+#         # Install necessary Python libraries (This should be done in your system shell or use !pip in a Jupyter notebook)
+#         # !pip install numpy scipy librosa unidecode inflect
+
+#         # Assume system dependencies like libsndfile1 are already installed
+
+#         device = 'cuda'
+#         # Load pre-trained Tacotron2 model
+
+#         tacotron2 = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_tacotron2', model_math='fp16')
+#         tacotron2 = tacotron2.to(device)
+#         tacotron2.eval()
+        
+#         self.tacotron2 = tacotron2
+
+#         # Load pre-trained WaveGlow model
+#         waveglow = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_waveglow', model_math='fp16')
+#         waveglow = waveglow.remove_weightnorm(waveglow)
+#         waveglow = waveglow.to(device)
+#         waveglow.eval()
+        
+#         self.waveglow = waveglow
+        
+#         self.utils = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_tts_utils')
+        
+
+#     def generate(self, text):
+        
+#         sequences, lengths = self.utils.prepare_input_sequence([text])
+
+#         # Generate speech
+#         with torch.no_grad():
+#             mel, _, _ = self.tacotron2.infer(sequences, lengths)
+#             audio = self.waveglow.infer(mel)
+#         audio_numpy = audio[0].data.cpu().numpy()
+#         rate = 22050
+
+#         # Write to a file
+#         write("tacotron.wav", rate, audio_numpy)
+
+# class GoogleTTS():
+#     """from gtts import gTTS"""
+    
+#     def generate(self, text):
+        
+#         tts = gTTS(text=text, lang='en')
+#         tts.save("google.mp3")
+        

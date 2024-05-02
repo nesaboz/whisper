@@ -1,0 +1,11 @@
+name: ai-therapist
+
+services:
+  main_app:
+    build: .
+    ports:
+      - "8501:8501"  # Assuming this is the port for your main app
+    environment:
+      - OPENAI_API_KEY
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY

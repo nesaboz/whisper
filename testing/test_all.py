@@ -1,7 +1,24 @@
 import os
-from app.utils import Polly, Whisper
+from utils import Polly, Whisper
+
+from openai import OpenAI, RateLimitError
 
 
+def test_llm_client():
+    
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))   
+    
+    chat = [{'role': 'system', 'content': "You are helpful assistant."}, {'role': 'user', 'content': "what's 2+2"}]
+    
+    reply = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=chat,
+        max_tokens=500
+        )
+
+    answer = reply.choices[0].message.content
+    
+    
 
 def test_polly():
     POLLY = Polly()

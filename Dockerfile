@@ -10,12 +10,14 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/nesaboz/whisper.git .
+# RUN git clone https://github.com/nesaboz/whisper.git .
+COPY . .
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install openai boto3 openai-whisper streamlit-audiorec soundfile
 
 EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Start the Python HTTP server in the background
+CMD streamlit run app.py --server.port=8501 --server.address=0.0.0.0

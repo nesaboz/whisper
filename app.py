@@ -23,8 +23,6 @@ ss = st.session_state
 
 secret = get_secret()
 OPENAI_API_KEY = secret['OPENAI_API_KEY']
-AWS_ACCESS_KEY_ID = secret['AWS_ACCESS_KEY_ID']
-AWS_SECRET_ACCESS_KEY = secret['AWS_SECRET']
 
 
 def generate_new_markdown(audio_stream: bytes):

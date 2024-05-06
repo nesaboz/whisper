@@ -12,6 +12,7 @@ from utils import write_to_temp_audio
 from typing import List
 import base64
 from st_audiorec import st_audiorec
+from get_secrets import get_secret
 
 
 import warnings
@@ -19,6 +20,11 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 
 ss = st.session_state 
+
+secret = get_secret()
+OPENAI_API_KEY = secret['OPENAI_API_KEY']
+AWS_ACCESS_KEY_ID = secret['AWS_ACCESS_KEY_ID']
+AWS_SECRET_ACCESS_KEY = secret['AWS_SECRET']
 
 
 def generate_new_markdown(audio_stream: bytes):

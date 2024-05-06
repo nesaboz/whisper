@@ -4,3 +4,5 @@ testing/__pycache__
 __pycache__
 temp_input.wav
 outputs
+.vscode
+

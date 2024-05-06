@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 # RUN git clone https://github.com/nesaboz/whisper.git .
 COPY . .
 
-RUN pip3 install openai boto3 openai-whisper streamlit-audiorec soundfile
+RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
 

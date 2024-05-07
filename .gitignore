@@ -6,3 +6,4 @@ temp_input.wav
 outputs
 .vscode
 .DS_Store
+.env

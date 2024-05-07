@@ -21,9 +21,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 ss = st.session_state 
 
-secret = get_secret()
-OPENAI_API_KEY = secret['OPENAI_API_KEY']
-
 
 def generate_new_markdown(audio_stream: bytes):
     b64 = base64.b64encode(audio_stream).decode()
@@ -92,7 +89,8 @@ if __name__ == "__main__":
         
         ss['stopped'] = False
         ss['user_input'] = None
-        ss['llm_client'] = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))   
+        
+        ss['llm_client'] = OpenAI(api_key=get_secret()['OPENAI_API_KEY'])
         
         st.empty()  # this is important since audio recorder will be overwritten by the st.audio
         ss['md_placeholder'] = st.empty()

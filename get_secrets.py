@@ -5,7 +5,7 @@
 
 import boto3
 from botocore.exceptions import ClientError
-
+import ast
 
 def get_secret():
 
@@ -28,9 +28,9 @@ def get_secret():
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         raise e
 
-    secret = get_secret_value_response['SecretString']
+    secret_dict = ast.literal_eval(get_secret_value_response['SecretString'])
 
-    return secret
+    return secret_dict
 
 
 if __name__ == "__main__":

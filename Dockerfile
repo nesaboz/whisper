@@ -2,11 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+ARG AWS_ACCESS_KEY_ID=""
+ARG AWS_SECRET_ACCESS_KEY=""
+
+ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     software-properties-common \
     git \
+    alsa-utils \
     ffmpeg \
     && python -m ensurepip && pip install --upgrade pip \
     && rm -rf /var/lib/apt/lists/*

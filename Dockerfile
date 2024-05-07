@@ -8,12 +8,13 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     git \
     ffmpeg \
+    && python -m ensurepip && pip install --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
 
 # RUN git clone https://github.com/nesaboz/whisper.git .
 COPY . .
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install --verbose -r requirements.txt
 
 EXPOSE 8501
 
